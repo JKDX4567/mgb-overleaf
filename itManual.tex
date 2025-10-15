@@ -26,15 +26,21 @@
 %\usepackage{url}
 
 % Does not work with LaTeX=>PDF
-\usepackage[pdfmark, 
-breaklinks=true, 
-colorlinks=true,
-citecolor=blue,
-linkcolor=blue,
-menucolor=black,
-pagecolor=black,
-urlcolor=blue
-]{hyperref} % links in pdf
+%\usepackage[pdfmark, 
+%breaklinks=true, 
+%colorlinks=true,
+%citecolor=blue,
+%linkcolor=blue,
+%menucolor=black,
+%pagecolor=black,
+%urlcolor=blue
+%]{hyperref} % links in pdf
+
+\usepackage[colorlinks=true,
+            linkcolor=blue,
+            citecolor=blue,
+            urlcolor=blue]{hyperref}
+
 
 %\usepackage[colorlinks]{hyperref} % links in dvi
 \usepackage{listings}
@@ -245,7 +251,10 @@ urlcolor=blue
 \newtheorem{userStory}{User Story}
 
 % command for adding a version to the document
-\newcommand{\VERSION}{Version 0.0.0}
+% -- put this in itManual.tex preamble (only once) --
+\IfFileExists{version.tex}
+  {\input{version.tex}} % defines \VERSION
+  {\newcommand{\VERSION}{Version DEV}} % fallback if file missing
 
 % Family -- enter the name of the family that it belongs to: Chapter, Figure, Table, etc.
 % Name -- name of the family member: file name, table name, etc.

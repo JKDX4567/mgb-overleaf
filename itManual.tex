@@ -36,10 +36,6 @@
 %urlcolor=blue
 %]{hyperref} % links in pdf
 
-\usepackage[colorlinks=true,
-            linkcolor=blue,
-            citecolor=blue,
-            urlcolor=blue]{hyperref}
 
 
 %\usepackage[colorlinks]{hyperref} % links in dvi
@@ -236,6 +232,19 @@
   \label{file:#1}%
 }
 
+% --- load hyperref LAST ---
+\usepackage[colorlinks=true,
+            linkcolor=blue,
+            citecolor=blue,
+            urlcolor=blue]{hyperref}
+
+
+% make ToC/LOF/LOT entries clickable (some classes default to page-only)
+\hypersetup{linktoc=all}
+\let\contentspage\tableofcontents
+\let\figurelistpage\listoffigures
+\let\tablelistpage\listoftables
+
 % Use this to label requirements, use cases, user stories, etc.
 % This is where we can add different spellings for different types of 
 % requirements, use cases, user stories, etc.
@@ -394,6 +403,7 @@
 %}
 
 
+
 \begin{document}
 
 %\begin{minted}{python}
@@ -448,7 +458,7 @@
 %\include{LaTeX_Docker}
 \include{Bugzilla}
 \include{Overleaf}
-
+\include{Domain_Names}
 \appendix
 \input{itAppendix}
 

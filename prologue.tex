@@ -7,7 +7,7 @@
 % Cornell-style title page
 \begin{titlepage}
         \title{SSW590 Assignment}
-        \author{Matthew Smith (Test 4), Bowen Jiang, Gleb Myshkin \\bjiang14@stevens.edu, msmith20@stevens.edu, gmyshkin@stevens.edu }
+        \author{Matthew Smith (Test 5), Bowen Jiang, Gleb Myshkin \\bjiang14@stevens.edu, msmith20@stevens.edu, gmyshkin@stevens.edu }
         \conferraldate{}{\today} \maketitle
 
         \vspace{1em}
@@ -41,11 +41,19 @@
 %\begin{acknowledgements} \input acknow \end{acknowledgements}
 
 % Table of contents
-\contentspage
+\begingroup
+  \hypersetup{linktoc=page}
+  \contentspage
+\endgroup
 
-% If you have no tables or figures put a % in front of the list page line
 % List of tables
-\tablelistpage
+\begingroup
+  \hypersetup{linktoc=page}
+  \tablelistpage
+\endgroup
 
 % List of figures
-\figurelistpage
+\begingroup
+  \hypersetup{linktoc=page}
+  \figurelistpage
+\endgroup

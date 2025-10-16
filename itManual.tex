@@ -408,12 +408,6 @@
             citecolor=blue,
             urlcolor=blue]{hyperref}
 
-
-\makeatletter
-\let\GPT@oldcontentsline\contentsline
-\def\contentsline#1#2#3#4{%
-  \GPT@oldcontentsline{#1}{\hyper@linkstart{link}{#4}#2\hyper@linkend}{#3}{#4}}
-\makeatother
 % make ToC/LOF/LOT entries clickable (some classes default to page-only)
 \hypersetup{
   linktoc=all,        % make ToC/LoF/LoT entries clickable

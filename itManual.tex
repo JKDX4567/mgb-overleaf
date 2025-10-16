@@ -238,18 +238,7 @@
 }
 
 % --- load hyperref LAST ---
-\usepackage[colorlinks=true,
-            linkcolor=blue,
-            citecolor=blue,
-            urlcolor=blue]{hyperref}
 
-
-% make ToC/LOF/LOT entries clickable (some classes default to page-only)
-\hypersetup{linktoc=all}
-\usepackage{bookmark} % optional, but improves PDF bookmarks
-
-\pdfcompresslevel=0
-\pdfobjcompresslevel=0
 
 \AtBeginDocument{%
   \let\contentspage\tableofcontents
@@ -414,7 +403,22 @@
 %minted-test,
 %}
 
+\usepackage[colorlinks=true,
+            linkcolor=blue,
+            citecolor=blue,
+            urlcolor=blue]{hyperref}
 
+
+% make ToC/LOF/LOT entries clickable (some classes default to page-only)
+\hypersetup{
+  allcolors=blue,     % ensure links are visible even if border styles differ
+  linktoc=all,        % make ToC/LoF/LoT entries clickable
+  pdfborder={0 0 0}   % no ugly boxes (also avoids some viewer quirks)
+}
+\usepackage{bookmark} % optional, but improves PDF bookmarks
+
+\pdfcompresslevel=0
+\pdfobjcompresslevel=0
 
 \begin{document}
 

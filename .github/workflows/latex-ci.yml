@@ -1,0 +1,77 @@
+name: Build LaTeX PDF
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # we want commit history for the count
+
+      - name: Compute version info
+        id: ver
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Write version.tex (defines \VERSION)
+        run: |
+          echo "\\newcommand{\\VERSION}{v${{ steps.ver.outputs.commit_count }}-${{ steps.ver.outputs.short_sha }}}" > version.tex
+
+      - name: Install TeX Live (latexmk + needed pkgs)
+        uses: tea-boys/setup-texlive@v2
+        with:
+          packages: >-
+            scheme-small
+            latexmk
+            xetex
+            pgf
+            etoolbox
+            hyperref
+            geometry
+            xcolor
+            listings
+            minted
+            fontspec
+            amsmath
+            amssymb
+
+      - name: Python for minted (Pygments)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: pip install pygments
+
+      - name: Build PDF (itManual.tex)
+        run: |
+          latexmk -pdf -shell-escape -file-line-error -interaction=nonstopmode itManual.tex
+
+      - name: Collect outputs
+        run: |
+          mkdir -p build
+          cp itManual.pdf build/ || true
+          ZIPNAME="itManual_v${{ steps.ver.outputs.commit_count }}-${{ steps.ver.outputs.short_sha }}.zip"
+          (cd build && zip -r "$ZIPNAME" itManual.pdf)
+
+      - name: Upload artifact (download from Actions page)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-build
+          path: build/
+
+      # Commit PDF/ZIP back into the repo (optional but satisfies step 4)
+      - name: Commit PDF back to repo
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "CI: add PDF v${{ steps.ver.outputs.commit_count }}-${{ steps.ver.outputs.short_sha }}"
+          file_pattern: build/*.pdf build/*.zip
+          add_options: '--force'

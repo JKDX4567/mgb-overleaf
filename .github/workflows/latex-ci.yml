@@ -27,30 +27,28 @@ jobs:
         run: |
           echo "\\newcommand{\\VERSION}{v${{ steps.ver.outputs.commit_count }}-${{ steps.ver.outputs.short_sha }}}" > version.tex
 
-      # Build with a maintained LaTeX action (runs inside a container)
+      # Build with latex-action v3 (containerized TeX Live)
       - name: Build PDF (itManual.tex)
         uses: xu-cheng/latex-action@v3
         with:
           root_file: itManual.tex
-          # latexmk default is pdflatex; pass flags we used before:
+          # pdfLaTeX + minted needs shell-escape:
           args: -pdf -shell-escape -file-line-error -interaction=nonstopmode
-          # TeX Live packages installed via tlmgr:
-          extra_packages: >-
-            minted
-            xcolor
-            hyperref
-            geometry
-            etoolbox
-            amsmath
-            amssymb
-            pgf
-            listings
-          # System packages inside the container (Alpine):
-          # Pygments is needed for \usepackage{minted}
+          # Install OS packages inside the container (needed for minted)
           extra_system_packages: >-
             python3
-            py3-pip
-            py3-pygments
+            python3-pip
+            python3-pygments
+            zip
+          # Install TeX packages before compiling
+          pre_compile: |
+            tlmgr update --self
+            tlmgr install \
+              minted xcolor hyperref geometry etoolbox \
+              amsmath amssymb pgf listings \
+              fancyvrb tcolorbox fvextra catchfile \
+              xstring ifplatform grffile upquote \
+              titlesec mathtools biblatex csquotes
 
       - name: Collect outputs
         run: |

@@ -13,7 +13,7 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # we want commit history for the count
+          fetch-depth: 0  # keep history for commit count
 
       - name: Compute version info
         id: ver
@@ -27,33 +27,30 @@ jobs:
         run: |
           echo "\\newcommand{\\VERSION}{v${{ steps.ver.outputs.commit_count }}-${{ steps.ver.outputs.short_sha }}}" > version.tex
 
-      - name: Install TeX Live (latexmk + needed pkgs)
-        uses: tea-boys/setup-texlive@v2
+      # Build with a maintained LaTeX action (runs inside a container)
+      - name: Build PDF (itManual.tex)
+        uses: xu-cheng/latex-action@v3
         with:
-          packages: >-
-            scheme-small
-            latexmk
-            xetex
-            pgf
-            etoolbox
+          root_file: itManual.tex
+          # latexmk default is pdflatex; pass flags we used before:
+          args: -pdf -shell-escape -file-line-error -interaction=nonstopmode
+          # TeX Live packages installed via tlmgr:
+          extra_packages: >-
+            minted
+            xcolor
             hyperref
             geometry
-            xcolor
-            listings
-            minted
-            fontspec
+            etoolbox
             amsmath
             amssymb
-
-      - name: Python for minted (Pygments)
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-      - run: pip install pygments
-
-      - name: Build PDF (itManual.tex)
-        run: |
-          latexmk -pdf -shell-escape -file-line-error -interaction=nonstopmode itManual.tex
+            pgf
+            listings
+          # System packages inside the container (Alpine):
+          # Pygments is needed for \usepackage{minted}
+          extra_system_packages: >-
+            python3
+            py3-pip
+            py3-pygments
 
       - name: Collect outputs
         run: |
@@ -68,7 +65,6 @@ jobs:
           name: pdf-build
           path: build/
 
-      # Commit PDF/ZIP back into the repo (optional but satisfies step 4)
       - name: Commit PDF back to repo
         uses: stefanzweifel/git-auto-commit-action@v5
         with:

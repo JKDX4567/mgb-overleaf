@@ -29,23 +29,23 @@ jobs:
 
       # Build with latex-action v3 (containerized TeX Live)
       - name: Build PDF (itManual.tex)
-      # Uses ghcr.io/xu-cheng/texlive-full:latest (Alpine-based)
         uses: xu-cheng/latex-action@v3
         with:
           root_file: itManual.tex
+          work_in_root_file_dir: true
           # pdfLaTeX + minted needs shell-escape:
           args: -pdf -shell-escape -file-line-error -interaction=nonstopmode
-
-          # Install OS packages inside the container (Alpine package names!)
+          # Alpine packages for minted + zip
           extra_system_packages: >-
             python3
             py3-pip
             py3-pygments
             zip
-
-          # Install TeX packages before compiling
+          # If you later see "fontspec requires XETEX or LuaTeX", add:
+          # latexmk_use_xelatex: true
           pre_compile: |
             tlmgr update --self
+            # Most are already present in texlive-full, but harmless to ensure
             tlmgr install \
               amsfonts amsmath \
               minted xcolor hyperref geometry etoolbox \
@@ -53,21 +53,58 @@ jobs:
               xstring ifplatform grffile upquote \
               titlesec mathtools biblatex csquotes
 
+      # If the build fails, print a helpful snippet from the log into the console
+      - name: Show first LaTeX error (console snippet)
+        if: ${{ failure() }}
+        run: |
+          echo "---- Searching for first LaTeX error in itManual.log ----"
+          if [ -f itManual.log ]; then
+            LINE=$(grep -n '^!' itManual.log | head -1 | cut -d: -f1 || true)
+            if [ -n "$LINE" ]; then
+              START=$((LINE>20 ? LINE-20 : 1))
+              END=$((LINE+40))
+              sed -n "${START},${END}p" itManual.log
+            else
+              echo "No lines starting with '!' found; showing last 200 lines:"
+              tail -n 200 itManual.log
+            fi
+          else
+            echo "itManual.log not found."
+          fi
 
+      # Always upload logs so we can inspect them
+      - name: Upload LaTeX logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: latex-logs
+          path: |
+            *.log
+            *.fls
+            *.fdb_latexmk
+            *.aux
+            **/*.log
+            **/*.aux
+            itManual.synctex.gz
+
+      # Only collect and zip the PDF if the build actually succeeded
       - name: Collect outputs
+        if: ${{ success() }}
         run: |
           mkdir -p build
-          cp itManual.pdf build/ || true
+          cp itManual.pdf build/
           ZIPNAME="itManual_v${{ steps.ver.outputs.commit_count }}-${{ steps.ver.outputs.short_sha }}.zip"
           (cd build && zip -r "$ZIPNAME" itManual.pdf)
 
-      - name: Upload artifact (download from Actions page)
+      - name: Upload PDF artifact
+        if: ${{ success() }}
         uses: actions/upload-artifact@v4
         with:
           name: pdf-build
           path: build/
 
       - name: Commit PDF back to repo
+        if: ${{ success() }}
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "CI: add PDF v${{ steps.ver.outputs.commit_count }}-${{ steps.ver.outputs.short_sha }}"

@@ -47,11 +47,12 @@ jobs:
           pre_compile: |
             tlmgr update --self
             tlmgr install \
+              amsfonts amsmath \
               minted xcolor hyperref geometry etoolbox \
-              amsmath amssymb pgf listings \
-              fancyvrb tcolorbox fvextra catchfile \
+              pgf listings fancyvrb tcolorbox fvextra catchfile \
               xstring ifplatform grffile upquote \
               titlesec mathtools biblatex csquotes
+
 
       - name: Collect outputs
         run: |

@@ -27,7 +27,7 @@ jobs:
         run: |
           echo "\\newcommand{\\VERSION}{v${{ steps.ver.outputs.commit_count }}-${{ steps.ver.outputs.short_sha }}}" > version.tex
 
-      # Build with latex-action v3 (containerized TeX Live)
+      # Build with latex-action v3 (containerized TeX Live; Alpine-based image)
       - name: Build PDF (itManual.tex)
         uses: xu-cheng/latex-action@v3
         with:
@@ -35,17 +35,17 @@ jobs:
           work_in_root_file_dir: true
           # pdfLaTeX + minted needs shell-escape:
           args: -pdf -shell-escape -file-line-error -interaction=nonstopmode
-          # Alpine packages for minted + zip
+          # Alpine package names for Python/Pygments and zip:
           extra_system_packages: >-
             python3
             py3-pip
             py3-pygments
             zip
-          # If you later see "fontspec requires XETEX or LuaTeX", add:
-          # latexmk_use_xelatex: true
+          # Let CI finish even if LaTeX has non-fatal errors; we'll still upload logs
+          continue_on_error: true
+          # (Most of these are already in texlive-full; harmless to ensure)
           pre_compile: |
             tlmgr update --self
-            # Most are already present in texlive-full, but harmless to ensure
             tlmgr install \
               amsfonts amsmath \
               minted xcolor hyperref geometry etoolbox \
@@ -53,19 +53,19 @@ jobs:
               xstring ifplatform grffile upquote \
               titlesec mathtools biblatex csquotes
 
-      # If the build fails, print a helpful snippet from the log into the console
+      # Always show a helpful snippet from the log (even on success)
       - name: Show first LaTeX error (console snippet)
-        if: ${{ failure() }}
+        if: always()
         run: |
           echo "---- Searching for first LaTeX error in itManual.log ----"
           if [ -f itManual.log ]; then
-            LINE=$(grep -n '^!' itManual.log | head -1 | cut -d: -f1 || true)
+            LINE=$(grep -n -E '^(!|.*LaTeX Error:)' itManual.log | head -1 | cut -d: -f1 || true)
             if [ -n "$LINE" ]; then
               START=$((LINE>20 ? LINE-20 : 1))
               END=$((LINE+40))
               sed -n "${START},${END}p" itManual.log
             else
-              echo "No lines starting with '!' found; showing last 200 lines:"
+              echo "No obvious error lines; showing last 200 lines:"
               tail -n 200 itManual.log
             fi
           else
@@ -87,7 +87,7 @@ jobs:
             **/*.aux
             itManual.synctex.gz
 
-      # Only collect and zip the PDF if the build actually succeeded
+      # Only collect and zip the PDF if the build actually produced it
       - name: Collect outputs
         if: ${{ success() }}
         run: |

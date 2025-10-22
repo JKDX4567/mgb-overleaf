@@ -1,45 +1,72 @@
 \chapter{Overleaf}
-\small{\textit{-- Matthew Smith, Bowen Jiang, Gleb Myshkin}}
+\small\textit{-- Matthew Smith, Bowen Jiang, Gleb Myshkin}
 \ChapterLabel{Overleaf}
-\index{hosts} 
+\index{hosts}
 \index{Chapter!Overleaf}
 
+\section*{TLS/SSL reverse proxy options}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Caddy} (easiest): automatic Let's Encrypt + renewals.
+  \item \textbf{Nginx + certbot}
+  \item \textbf{Traefik}
+\end{itemize}
 
-3 options for ssl:
+\subsection*{Caddy (recommended)}
+\paragraph{docker-compose.yml (snippet)}
+\begin{minted}[breaklines]{yaml}
+services:
+  caddy:
+    image: caddy:latest
+    ports: ["80:80", "443:443"]
+    volumes:
+      - "./Caddyfile:/etc/caddy/Caddyfile"
+      - "caddy_data:/data"
+    depends_on:
+      - sharelatex
 
-\begin{itemize}
-        \item Caddy (easiest) — automatic Let’s Encrypt + renewals
-
-        (yaml code): # service caddy
-        ports: ["80:80","443:443"]
-        volumes: ["./Caddyfile:/etc/caddy/Caddyfile","caddy_data:/data"]
-        # Caddyfile
-        overleaf.example.com {
-          encode gzip
-          reverse_proxy sharelatex:80
-        }
-        \item Nginx + certbot
-        \item Traefik
-    \end{itemize}
-
-\begin{minted}{python}
-print("minted works")
+  sharelatex:
+    image: sharelatex/sharelatex:latest
+    # ... your existing Overleaf CE service config ...
+volumes:
+  caddy_data:
 \end{minted}
 
+\paragraph{Caddyfile}
+\begin{minted}[breaklines]{caddyfile}
+overleaf.example.com {
+  encode gzip
+  reverse_proxy sharelatex:80
+}
+\end{minted}
 
-Logs to confirm these work right:
+\subsection*{Quick checks}
+\begin{itemize}[leftmargin=*]
+  \item Browse to \texttt{https://overleaf.example.com} and confirm the Overleaf UI loads.
+  \item In the Caddy container, confirm certs and upstream health:
+\end{itemize}
 
-GPT DIAG: pdfshellescape=1
-GPT DIAG: minted.sty FOUND
+\begin{minted}[breaklines]{bash}
+docker compose logs -f caddy
+docker compose exec caddy caddy list-modules | head
+curl -I https://overleaf.example.com
+\end{minted}
 
+\section*{Repo + CI notes}
+GitHub repo: \url{https://github.com/JKDX4567/mgb-overleaf}
 
-
-Github link: https://github.com/JKDX4567/mgb-overleaf
-
-(How to update github: 
+\paragraph{Syncing with Overleaf remote and pushing to GitHub}
+Run these from the project folder:
+\begin{minted}[breaklines]{bash}
+# Update local from Overleaf git (server-side Overleaf repo)
 git pull overleaf master
-git push origin main
-DO THIS WHILE IN FOLDER TERMINAL
-First line updates local file
-Second pushes it to github)
 
+# Push latest local changes to GitHub (main branch)
+git push origin main
+\end{minted}
+
+\paragraph{Tip}
+If you quote inline identifiers in prose, prefer \verb|\verb| or \texttt{...}:
+\begin{itemize}[leftmargin=*]
+  \item \verb|caddy_data| instead of caddy\_data
+  \item \verb|# comment| instead of \# comment
+\end{itemize}

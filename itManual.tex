@@ -66,6 +66,7 @@
   % linenos,
   % bgcolor=gray!10
 }
+\usepackage[utf8]{inputenc}
 
 \usepackage[T1]{fontenc}  % enables \textquotedbl and better hyphenation
 \usepackage{textcomp}     % extra text symbols (keeps \textquotedbl robust)
@@ -359,6 +360,16 @@
   stringstyle=\color{mymauve}     % string literal style
   %tabsize=2,                      % sets default tabsize to 2 spaces
   %caption=\lstname                % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+% Make some common Unicode glyphs work under pdfLaTeX in listings:
+\lstset{
+  literate=
+    {–}{{-}}1   % en-dash → -
+    {—}{{--}}1  % em-dash → --
+    {…}{{...}}1
+    {─}{{-}}1   % U+2500 box drawing light horizontal
+    {│}{{|}}1   % U+2502 box drawing light vertical
+    {«}{{<<}}1  {»}{{>>}}1
 }
 
 

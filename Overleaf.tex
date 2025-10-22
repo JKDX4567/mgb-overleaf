@@ -32,12 +32,13 @@ volumes:
 \end{minted}
 
 \paragraph{Caddyfile}
-\begin{minted}[breaklines]{caddyfile}
+\begin{minted}[breaklines]{nginx}
 overleaf.example.com {
   encode gzip
   reverse_proxy sharelatex:80
 }
 \end{minted}
+
 
 \subsection*{Quick checks}
 \begin{itemize}[leftmargin=*]

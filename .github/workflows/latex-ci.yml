@@ -29,17 +29,20 @@ jobs:
 
       # Build with latex-action v3 (containerized TeX Live)
       - name: Build PDF (itManual.tex)
+      # Uses ghcr.io/xu-cheng/texlive-full:latest (Alpine-based)
         uses: xu-cheng/latex-action@v3
         with:
           root_file: itManual.tex
           # pdfLaTeX + minted needs shell-escape:
           args: -pdf -shell-escape -file-line-error -interaction=nonstopmode
-          # Install OS packages inside the container (needed for minted)
+
+          # Install OS packages inside the container (Alpine package names!)
           extra_system_packages: >-
             python3
-            python3-pip
-            python3-pygments
+            py3-pip
+            py3-pygments
             zip
+
           # Install TeX packages before compiling
           pre_compile: |
             tlmgr update --self

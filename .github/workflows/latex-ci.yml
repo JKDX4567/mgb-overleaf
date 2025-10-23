@@ -1,4 +1,4 @@
-name: LaTeX build
+name: LaTeX build (fast)
 
 on:
   push:
@@ -13,8 +13,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
-    # Use a TeX Live container so we don't fight apt installs
     container:
       image: ghcr.io/xu-cheng/texlive-full:latest
 
@@ -22,40 +20,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Pre-compile setup (Python, Pygments, zip)
+      - name: Pygments for minted
         run: |
-          # Packages for minted / pygments + zip tools
           apk update
           apk add --no-cache python3 py3-pip py3-pygments zip unzip
 
-      - name: Pre-install TeX packages (idempotent)
-        run: |
-          tlmgr option repository https://mirrors.ibiblio.org/pub/mirrors/CTAN/systems/texlive/tlnet
-          tlmgr update --self --all
-          # Core stuff your project uses; safe if already present
-          tlmgr install amsfonts amsmath biblatex catchfile csquotes etoolbox fancyvrb fvextra \
-                        geometry grffile hyperref ifplatform listings mathtools minted pgf \
-                        tcolorbox titlesec upquote xcolor xstring glossaries glossaries-extra \
-                        txfonts tocloft longtable bookmark
-          # minted uses external pygmentize via --shell-escape (we installed that above)
-
-      - name: Compile PDF with latexmk
+      - name: Compile with latexmk
         id: compile
-        # never fail the step hard; we want to upload logs/PDF even on failure
         continue-on-error: true
-        env:
-          # Ensure shell-escape for minted and robust error reporting
-          LATEXMKOPTS: "-pdf -interaction=nonstopmode -file-line-error --shell-escape"
         run: |
           set -x
-          latexmk $LATEXMKOPTS itManual.tex || true
+          latexmk -pdf -interaction=nonstopmode -file-line-error --shell-escape itManual.tex || true
 
-      - name: Show first LaTeX error (nice snippet)
+      - name: Show first LaTeX error
         if: always()
         run: |
           echo "---- Searching for first LaTeX error in itManual.log ----"
           if [ -f itManual.log ]; then
-            # grep -a = treat as text; fall back to last 200 lines if no obvious lines
             LINE=$(grep -n -a -E '^(!|.*LaTeX Error:)' itManual.log | head -1 | cut -d: -f1 || true)
             if [ -n "$LINE" ]; then
               START=$((LINE>20 ? LINE-20 : 1))
@@ -69,16 +50,6 @@ jobs:
             echo "itManual.log not found."
           fi
 
-      - name: Summarize result
-        if: always()
-        run: |
-          echo "## LaTeX build summary" >> $GITHUB_STEP_SUMMARY
-          if [ -f itManual.pdf ]; then
-            echo "✅ PDF produced: itManual.pdf" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ PDF missing (see logs)" >> $GITHUB_STEP_SUMMARY
-          fi
-
       - name: Upload PDF
         if: always()
         uses: actions/upload-artifact@v4
@@ -88,7 +59,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Upload logs and aux files
+      - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:

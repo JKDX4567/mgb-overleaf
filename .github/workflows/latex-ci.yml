@@ -3,65 +3,59 @@ name: Build LaTeX PDF
 on:
   push:
     branches: [ main ]
-    paths:
-      - '**.tex'
-      - '**.bib'
-      - '**.sty'
-      - '**.cls'
-      - '**.png'
-      - '**.jpg'
-      - '**.pdf'
-      - '.github/workflows/latex.yml'
   pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
+# Needed for pushing to the repo (build-pdfs branch)
 permissions:
-  contents: write   # needed only if you keep the "Commit PDF" step below
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Build the PDF with texlive-full (supports tlmgr and shell-escape)
-      - name: Build LaTeX (latexmk via latex-action)
-        id: latex
+      # 1) Stamp version.tex so \VERSION shows up in your PDF
+      - name: Write version.tex with changelist
+        run: |
+          echo "\\newcommand{\\VERSION}{Version ${GITHUB_RUN_NUMBER} (commit ${GITHUB_SHA::7})}" > version.tex
+          echo "Wrote version.tex:"
+          cat version.tex
+
+      # 2) Build the LaTeX (pdflatex via latexmk). Shell-escape ON for minted.
+      - name: Build itManual.tex
         uses: xu-cheng/latex-action@v3
         with:
           root_file: itManual.tex
           latexmk_shell_escape: true
-          work_in_root_file_dir: true
-          # Install system packages that minted/pygments and zipping need
-          extra_system_packages: >-
-            py3-pip
-            py3-pygments
-            zip
-          # Ensure TeX packages you use are present
+          args: -interaction=nonstopmode -file-line-error
+          # Keep this list minimal; texlive-full already includes most things.
           pre_compile: |
-            tlmgr update --self || true
+            echo "Install tools needed by minted/zip..."
+            apk add --no-cache python3 py3-pip py3-pygments zip >/dev/null
+            echo "TeX Live is preloaded; only ensure a few common packages:"
+            tlmgr update --self
             tlmgr install \
-              minted ifplatform catchfile xstring grffile fvextra upquote \
-              tcolorbox titlesec csquotes biblatex listings amsfonts amsmath \
-              mathtools txfonts geometry hyperref pgf fancyvrb etoolbox \
-              longtable tocloft bookmark || true
+              amsfonts amsmath biblatex catchfile csquotes etoolbox fancyvrb \
+              fvextra geometry hyperref ifplatform listings mathtools minted \
+              pgf tcolorbox titlesec upquote xcolor xstring tocloft glossaries \
+              longtable txfonts >/dev/null || true
 
-      # Show first LaTeX error/warning snippet, but NEVER fail the job
-      - name: Show first LaTeX error (console snippet)
-        if: always()
-        shell: bash
+      # 3) Show first LaTeX error context (if any). Doesn't fail the job.
+      - name: Show first LaTeX error (context)
         run: |
           set +e
           echo "---- Searching for first LaTeX error in itManual.log ----"
           if [ -f itManual.log ]; then
-            # -a to treat as text even if grep thinks binary
-            LINE=$(grep -a -n -E '^(!|.*LaTeX Error:)' itManual.log | head -1 | cut -d: -f1 || true)
+            LINE=$(grep -n -E '^(!|.*LaTeX Error:)' itManual.log | head -1 | cut -d: -f1 || true)
             if [ -n "$LINE" ]; then
               START=$((LINE>20 ? LINE-20 : 1))
-              END=$((LINE+40))
+              END=$((LINE+60))
               sed -n "${START},${END}p" itManual.log
             else
               echo "No obvious error lines; showing last 200 lines:"
@@ -70,34 +64,66 @@ jobs:
           else
             echo "itManual.log not found."
           fi
-          exit 0
+          set -e
 
-      - name: List build outputs
-        if: always()
-        run: ls -lah || true
+      # 4) Check for the PDF, make a tidy artifacts/ folder, and copy things
+      - name: Prepare artifacts
+        id: havepdf
+        run: |
+          mkdir -p artifacts
+          if [ -f itManual.pdf ]; then
+            cp itManual.pdf "artifacts/itManual-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}.pdf"
+            cp itManual.pdf "artifacts/itManual-latest.pdf"
+            [ -f itManual.log ] && cp itManual.log artifacts/ || true
+            echo "pdf_present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No PDF produced."
+            echo "pdf_present=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      # Always upload the PDF artifact so you can download it from the run page
-      - name: Upload PDF (always)
-        if: always()
+      # 5) Upload the PDF and logs as an artifact
+      - name: Upload PDF artifact
+        if: steps.havepdf.outputs.pdf_present == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: itManual-pdf
-          path: itManual.pdf
-          if-no-files-found: warn
-          retention-days: 14
+          path: |
+            artifacts/itManual-*.pdf
+            artifacts/itManual.log
+          retention-days: 30
 
-      # OPTIONAL: also commit the PDF back to the repo on main
-      - name: Commit PDF to repo (main only)
-        if: github.ref == 'refs/heads/main'
-        shell: bash
+      # 6) Zip the PDF (and log) as a versioned package and upload
+      - name: Package PDF as zip
+        if: steps.havepdf.outputs.pdf_present == 'true'
         run: |
-          set -e
-          if [ -f itManual.pdf ]; then
-            git config user.name  "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add itManual.pdf version.tex 2>/dev/null || true
-            git commit -m "CI: add PDF for ${GITHUB_SHA::7}" || echo "No changes to commit"
-            git push || echo "Nothing to push (or no permission)."
-          else
-            echo "PDF not found; skipping commit step."
-          fi
+          ZIPNAME="itManual-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}.zip"
+          (cd artifacts && zip -r "../${ZIPNAME}" . -q)
+          echo "Created ${ZIPNAME}"
+
+      - name: Upload release zip
+        if: steps.havepdf.outputs.pdf_present == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: itManual-zip
+          path: itManual-*.zip
+          retention-days: 30
+
+      # 7) (Optional) Commit the PDFs back to the repo in branch "build-pdfs"
+      # Toggle this whole step off by setting the IF to false if you don't want commits.
+      - name: Commit PDFs to build-pdfs branch
+        if: steps.havepdf.outputs.pdf_present == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create/switch to branch build-pdfs from current HEAD
+          git fetch origin
+          git checkout -B build-pdfs
+
+          mkdir -p artifacts-committed
+          cp artifacts/itManual-latest.pdf artifacts-committed/
+          cp artifacts/itManual-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}.pdf artifacts-committed/
+
+          git add artifacts-committed/
+          git commit -m "PDF: run ${GITHUB_RUN_NUMBER}, commit ${GITHUB_SHA::7}"
+          git push -f origin build-pdfs

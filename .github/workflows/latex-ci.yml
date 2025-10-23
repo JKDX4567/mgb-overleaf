@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # needed to push the PDF back
+  contents: write
 
 jobs:
   build:
@@ -16,59 +16,43 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # needed for versioning and pushing back
+          fetch-depth: 0
 
-      # Write a version file the preamble will \input if present:
-      # \IfFileExists{version.tex}{\input{version.tex}}{\newcommand{\VERSION}{Version DEV}}
       - name: Write version.tex
         run: |
           SHORT_SHA="${GITHUB_SHA::7}"
           DATE="$(date -u +'%Y-%m-%d')"
-          # You can edit the format below to match your course rubric
           cat > version.tex <<EOF
           \newcommand{\VERSION}{Version ${GITHUB_RUN_NUMBER} (commit ${SHORT_SHA}, ${DATE} UTC)}
           EOF
-        shell: bash
 
       - name: Build PDF with latexmk (minted + shell-escape)
         uses: xu-cheng/latex-action@v3
         with:
           root_file: itManual.tex
-          # latexmk flags:
-          #  -pdf              -> build PDF
-          #  -interaction=nonstopmode -file-line-error -> useful CI logs
-          #  -shell-escape     -> required for minted/pygmentize
           args: -pdf -interaction=nonstopmode -file-line-error -shell-escape
-          # Install pygmentize for minted:
-          extra_system_packages: python3-pygments
+          # Alpine package name:
+          extra_system_packages: py3-pygments
 
-      # (Optional) Keep the CI-produced PDF as an artifact too
       - name: Upload PDF artifact
         uses: actions/upload-artifact@v4
         with:
           name: itManual
           path: itManual.pdf
 
-      # Commit the generated PDF back to the same branch
       - name: Commit PDF back to repo
         if: ${{ success() }}
         run: |
-          # Ensure we're on the branch that triggered the workflow
           git checkout "${GITHUB_REF_NAME}"
-          # Small rebase helps avoid non-fast-forward push errors if branch moved
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Add the PDF (and only the PDF)
           git add itManual.pdf
-
-          # Commit only if there are changes
           if ! git diff --cached --quiet; then
             git commit -m "CI: add itManual.pdf for ${GITHUB_SHA::7} (run ${GITHUB_RUN_NUMBER})"
             git push origin "${GITHUB_REF_NAME}"
           else
             echo "No PDF changes to commit."
           fi
-        shell: bash

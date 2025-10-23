@@ -480,23 +480,37 @@
 \pagenumbering{roman}
 \singlespacing
 \include{prologue}
-
 % ------- Front matter lists -------
 \cleardoublepage
 \pagenumbering{roman}
+\setcounter{tocdepth}{2}   % sections in ToC; bump to 3 for subsections
 
-% Tables of contents / figures / tables
+% Make bookmark + link targets (helps some viewers)
+\phantomsection
+\pdfbookmark[0]{Contents}{toc}
 \tableofcontents
+
+\cleardoublepage
+\phantomsection
+\pdfbookmark[0]{List of Figures}{lof}
 \listoffigures
+
+\cleardoublepage
+\phantomsection
+\pdfbookmark[0]{List of Tables}{lot}
 \listoftables
 
-% If you want list of code listings (from listings):
+% If you ever add \lstlistoflistings:
+% \cleardoublepage
+% \phantomsection
+% \pdfbookmark[0]{List of Listings}{lol}
 % \lstlistoflistings
 
 \cleardoublepage
 \setcounter{page}{1}
 \pagenumbering{arabic}
 % -----------------------------------
+
 
 
 \pagestyle{fancy}         % top right page numbers

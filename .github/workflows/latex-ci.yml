@@ -4,6 +4,7 @@ on:
   push:
     branches: [ main, master ]
   pull_request:
+  workflow_dispatch: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,11 +21,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Pygments for minted
+      # Create version.tex so \VERSION is not "Version DEV"
+      - name: Write version.tex
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          DATE=$(date -u +"%Y-%m-%d")
+          echo "\newcommand{\VERSION}{Version ${DATE} (${SHORT_SHA})}" > version.tex
+          echo "Wrote version.tex:"
+          cat version.tex
+
+      # Minted requires pygments
+      - name: Install pygments
         run: |
           apk update
-          apk add --no-cache python3 py3-pip py3-pygments zip unzip
+          apk add --no-cache python3 py3-pip py3-pygments
 
+      # (Optional) start fresh to avoid stale .toc/.aux confusion
+      - name: Clean LaTeX aux files
+        run: |
+          latexmk -C || true
+          rm -rf _*.minted* || true
+
+      # Compile; latexmk will rerun as needed for ToC/refs
       - name: Compile with latexmk
         id: compile
         continue-on-error: true
@@ -32,6 +50,7 @@ jobs:
           set -x
           latexmk -pdf -interaction=nonstopmode -file-line-error --shell-escape itManual.tex || true
 
+      # Helpful diagnostics: show first LaTeX error (binary logs safe)
       - name: Show first LaTeX error
         if: always()
         run: |
@@ -50,6 +69,7 @@ jobs:
             echo "itManual.log not found."
           fi
 
+      # Upload outputs no matter what so you can inspect locally
       - name: Upload PDF
         if: always()
         uses: actions/upload-artifact@v4

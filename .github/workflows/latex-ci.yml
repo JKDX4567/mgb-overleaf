@@ -28,22 +28,6 @@ jobs:
           \newcommand{\VERSION}{Version ${GITHUB_RUN_NUMBER} (commit ${SHORT_SHA}, ${DATE} UTC)}
           EOF
 
-      # Avoid BibTeX failures if bibfile.bib isn't in the repo
-      - name: Ensure bibfile.bib exists (placeholder if missing)
-        run: |
-          if [ ! -f bibfile.bib ]; then
-            cat > bibfile.bib <<'EOF'
-            @misc{mgb-manual,
-              author = {Smith, Matthew and Jiang, Bowen and Myshkin, Gleb},
-              title  = {MGB Project Manual References},
-              year   = {2025},
-              note   = {Placeholder entry for CI}
-            }
-            EOF
-            echo "Created placeholder bibfile.bib"
-          else
-            echo "Found existing bibfile.bib"
-          fi
 
       # Build with latexmk (needs shell-escape for minted)
       # The action’s Alpine image needs py3-pygments for minted/pygmentize
